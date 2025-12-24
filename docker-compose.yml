@@ -1,0 +1,53 @@
+services:
+  # Banco de Dados
+  db:
+    image: postgres:15
+    container_name: ecofin_db
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ecofin_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Cache e Message Broker para o Celery
+  redis:
+    image: redis:7-alpine
+    container_name: ecofin_redis
+    ports:
+      - "6379:6379"
+
+  # Nossa API Python (Backend)
+  api:
+    build: ./backend
+    container_name: ecofin_api
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/ecofin_db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+  worker:
+    build: ./backend
+    container_name: ecofin_worker
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/ecofin_db
+      - REDIS_URL=redis://redis:6379/0
+    # O comando muda! Em vez de uvicorn, rodamos celery
+    command: celery -A app.infrastructure.worker.celery_app.celery_app worker --loglevel=info
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  postgres_data:
+
