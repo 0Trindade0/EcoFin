@@ -47,6 +47,17 @@ services:
     depends_on:
       - db
       - redis
+  frontend:
+    build: ./frontend
+    container_name: ecofin_frontend
+    # Volumes é o segredo do Hot Reload: espelha sua pasta local dentro do container
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # Truque para não sobrescrever os módulos do container
+    ports:
+      - "3000:3000"
+    environment:
+      - WATCHPACK_POLLING=true
 
 volumes:
   postgres_data:

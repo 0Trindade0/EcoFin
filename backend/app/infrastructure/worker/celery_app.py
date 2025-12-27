@@ -2,18 +2,20 @@
 import os
 from celery import Celery
 
-# Pega a URL do Redis das variáveis de ambiente
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-# Cria a instância do Celery (o nome 'worker' é arbitrário)
+# 1. Remova o include daqui para evitar o ciclo imediato
 celery_app = Celery(
     "ecofin_worker",
     broker=REDIS_URL,
     backend=REDIS_URL
 )
 
-# Configurações adicionais
+# 2. Configure as importações e outras configs aqui
 celery_app.conf.update(
+    # Aqui dizemos ao Worker quais módulos ele deve carregar ao iniciar
+    imports=['app.infrastructure.worker.tasks'],
+    
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",

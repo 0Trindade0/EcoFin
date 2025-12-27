@@ -1,41 +1,51 @@
-# backend/app/infrastructure/worker/tasks.py
-import random
-from celery import shared_task
+from app.infrastructure.worker.celery_app import celery_app
 from app.infrastructure.db.config import SessionLocal
 from app.infrastructure.db.repositories.stock_repository_impl import PostgresStockRepository
-from app.application.stock_service import StockService
+from app.infrastructure.adapters.yfinance_adapter import YahooFinanceAdapter
+# Importa a estratégia
+from app.domain.strategies.indicator_strategy import SimpleMovingAverageStrategy
 
-@shared_task(name="update_stock_price_task")
+@celery_app.task(name="update_stock_price_task")
 def update_stock_price_task(symbol: str):
-    """
-    Tarefa que roda em background.
-    Ela simula buscar um preço novo e atualizar no banco.
-    """
-    print(f"🔄 WORKER: Iniciando atualização para {symbol}...")
-
-    # 1. Configura o ambiente (Banco de dados)
-    # Como o Celery roda em outro processo, precisamos criar uma nova sessão de banco
-    db = SessionLocal()
+    print(f"🔄 WORKER: Analisando ativo {symbol}...")
     
+    db = SessionLocal()
     try:
-        # 2. Monta a Arquitetura (Repo + Service)
         repo = PostgresStockRepository(db)
-        service = StockService(repo)
+        market_data = YahooFinanceAdapter()
         
-        # 3. Simula buscar preço externo (Aqui entraria o Yahoo Finance depois)
-        # Vamos gerar um preço aleatório entre 20 e 50
-        fake_new_price = round(random.uniform(20.0, 50.0), 2)
+        # 1. Busca Histórico (30 dias)
+        history_df = market_data.get_historical_data(symbol)
         
-        # 4. Busca a ação e atualiza
-        # Nota: Precisaríamos de um método update no service, vamos improvisar usando a lógica do repository direto ou adaptar o service depois.
-        # Por agora, vamos buscar e salvar de novo com preço novo.
+        if history_df is None or history_df.empty:
+            print(f"❌ WORKER: Sem dados para {symbol}")
+            return
+
+        # 2. Pega o preço atual (o último fechamento disponível)
+        current_price = round(float(history_df['Close'].iloc[-1]), 2)
+
+        # 3. Aplica Strategy: Calcula Média Móvel de 5 dias
+        strategy = SimpleMovingAverageStrategy(window=5)
+        sma_value = strategy.calculate(history_df)
+        
+        # 4. Atualiza no banco
         stock = repo.get_by_symbol(symbol)
         if stock:
-            stock.update_price(fake_new_price)
+            stock.update_price(current_price)
             repo.save(stock)
-            print(f"✅ WORKER: {symbol} atualizado para R$ {fake_new_price}")
+            
+            # AQUI ESTÁ A MÁGICA DO PANDAS SENDO LOGADA
+            print(f"✅ ANÁLISE COMPLETA {symbol}:")
+            print(f"   💰 Preço Atual: R$ {current_price}")
+            print(f"   📈 Média Móvel (5d): R$ {sma_value}")
+            
+            if current_price > sma_value:
+                print("   🚀 SINAL: TENDÊNCIA DE ALTA (Preço acima da média)")
+            else:
+                print("   🔻 SINAL: TENDÊNCIA DE BAIXA (Preço abaixo da média)")
+                
         else:
-            print(f"❌ WORKER: Ação {symbol} não encontrada.")
+            print(f"⚠️ WORKER: Ativo {symbol} não encontrado no banco.")
             
     except Exception as e:
         print(f"🔥 ERRO NO WORKER: {e}")
