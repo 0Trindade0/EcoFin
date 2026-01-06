@@ -1,9 +1,11 @@
 fastapi
 uvicorn
-pandas
 sqlalchemy
 psycopg2-binary
-redis
+pydantic
 celery
+redis
 yfinance
-requests  
+pandas
+numpy
+requests

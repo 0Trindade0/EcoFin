@@ -17,3 +17,8 @@ class StockRepository(ABC):
     def get_by_symbol(self, symbol: str) -> Optional[Stock]:
         """Busca uma ação pelo símbolo (ticker)."""
         pass
+
+    @abstractmethod
+    def find_all(self) -> list[Stock]:
+        """Retorna todas as ações cadastradas."""
+        pass

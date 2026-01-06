@@ -4,12 +4,15 @@ from typing import Optional
 
 @dataclass
 class Stock:
-    symbol: str  # Ex: PETR4
-    name: str    # Ex: Petrobras PN
-    sector: str  # Ex: ENERGY_FOSSIL ou ENERGY_RENEWABLE
-    price: float # Preço atual
-    last_updated: datetime = field(default_factory=datetime.now)
-
+    def __init__(self, symbol: str, name: str, price: float, sector: str = None, last_updated=None, id: int = None, change_percent: float = 0.0):
+        self.id = id  # <--- ADICIONADO: O campo ID
+        self.symbol = symbol
+        self.name = name
+        self.price = price
+        self.sector = sector
+        self.last_updated = last_updated
+        self.change_percent = change_percent
+    
     def update_price(self, new_price: float):
         """
         Regra de Negócio: O preço não pode ser negativo.

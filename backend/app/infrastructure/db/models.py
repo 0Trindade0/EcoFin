@@ -1,17 +1,15 @@
-# backend/app/infrastructure/db/models.py
-from sqlalchemy import Column, String, Float, DateTime, Integer
+from sqlalchemy import Column, Integer, String, Float, DateTime
 from datetime import datetime
-from app.infrastructure.db.config import Base
+# Importa o Base do arquivo config.py que está na mesma pasta (.config)
+from .config import Base
 
 class StockModel(Base):
-    """
-    Representação da tabela 'stocks' no banco de dados.
-    """
     __tablename__ = "stocks"
 
-    id = Column(Integer, primary_key=True, index=True) # O banco precisa de ID, o domínio talvez não
+    id = Column(Integer, primary_key=True, index=True)
     symbol = Column(String, unique=True, index=True)
     name = Column(String)
     sector = Column(String)
     price = Column(Float)
-    last_updated = Column(DateTime, default=datetime.now)
+    change_percent = Column(Float, default=0.0)
+    last_updated = Column(DateTime, default=datetime.utcnow)
