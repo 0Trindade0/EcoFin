@@ -44,7 +44,8 @@ class PostgresStockRepository(StockRepository):
             name=db_stock.name,
             sector=db_stock.sector,
             price=db_stock.price,
-            last_updated=db_stock.last_updated
+            last_updated=db_stock.last_updated,
+            change_percent=db_stock.change_percent or 0.0,
         )
 
     def get_by_symbol(self, symbol: str) -> Optional[Stock]:
@@ -56,7 +57,8 @@ class PostgresStockRepository(StockRepository):
                 name=db_stock.name,
                 sector=db_stock.sector,
                 price=db_stock.price,
-                last_updated=db_stock.last_updated
+                last_updated=db_stock.last_updated,
+                change_percent=db_stock.change_percent or 0.0,
             )
         return None
 
@@ -69,7 +71,8 @@ class PostgresStockRepository(StockRepository):
                 name=s.name,
                 sector=s.sector,
                 price=s.price,
-                last_updated=s.last_updated
+                last_updated=s.last_updated,
+                change_percent=s.change_percent or 0.0,
             )
             for s in db_stocks
         ]

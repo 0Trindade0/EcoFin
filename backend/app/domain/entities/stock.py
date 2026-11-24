@@ -20,7 +20,15 @@ class Stock:
         """
         if new_price < 0:
             raise ValueError("O preço da ação não pode ser negativo.")
-        
+
+        # A variação compara a cotação nova com a última cotação persistida.
+        # Sem um preço anterior válido (por exemplo, um ativo cadastrado a R$ 0),
+        # não existe uma base para calcular a porcentagem.
+        if self.price > 0:
+            self.change_percent = round(((new_price - self.price) / self.price) * 100, 2)
+        else:
+            self.change_percent = 0.0
+
         self.price = new_price
         self.last_updated = datetime.now()
 

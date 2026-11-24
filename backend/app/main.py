@@ -8,6 +8,7 @@ from app.infrastructure.db.config import engine, Base, get_db
 from app.infrastructure.db.repositories.stock_repository_impl import PostgresStockRepository
 from app.application.stock_service import StockService
 from app.infrastructure.worker.tasks import update_stock_price_task
+from app.infrastructure.worker.celery_app import celery_app
 # Importa o arquivo schemas que acabamos de criar
 from app import schemas 
 import app.infrastructure.db.models 
@@ -72,3 +73,13 @@ def refresh_stock(symbol: str):
         "task_id": task.id,
         "status": "Processing in background"
     }
+
+@app.get("/tasks/{task_id}")
+def get_task_status(task_id: str):
+    task = celery_app.AsyncResult(task_id)
+    response = {"task_id": task_id, "status": task.state}
+    if task.successful():
+        response["result"] = task.result
+    elif task.failed():
+        response["error"] = "Não foi possível atualizar este ativo."
+    return response

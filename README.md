@@ -1,89 +1,49 @@
-# 📈 EcoFin: Real-Time Financial Dashboard & Automated Data Pipeline
+# EcoFin
 
-![Python](https://img.shields.io/badge/Python-3.11-blue?style=flat-square&logo=python)
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat-square&logo=fastapi)
-![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)
-![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=flat-square&logo=docker)
-![Celery](https://img.shields.io/badge/Celery-Distributed_Task_Queue-37814A?style=flat-square&logo=celery)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=flat-square&logo=postgresql)
+Dashboard para acompanhar cotações de ativos. O projeto reúne uma interface Next.js, uma API FastAPI, PostgreSQL e tarefas em segundo plano com Celery e Redis.
 
-## 🔬 Executive Summary (R&D Perspective)
+## Requisitos
 
-EcoFin is an end-to-end, event-driven financial monitoring system built with **Clean Architecture** principles. It was designed to solve the common bottlenecks of massive financial data ingestion by strictly decoupling the client-facing API from the background data processing workers.
+- Docker Desktop com Docker Compose
 
-Instead of blocking the main API thread to fetch third-party data, EcoFin utilizes **Celery and Redis** to orchestrate asynchronous pipelines. A dedicated **Celery Beat** service acts as a cron-scheduler, autonomously dispatching workers to ingest, calculate, and persist market variations (e.g., Yahoo Finance data) at high frequencies.
+## Iniciar o projeto
 
-### Key Architectural Highlights:
-* **Clean Architecture:** Strict separation between Domain Entities, Use Cases, and Infrastructure/Adapters.
-* **Asynchronous Data Ingestion:** Background workers handle API rate limits, network latency, and complex calculations (percentage variations) without impacting the User Experience.
-* **Environment Parity:** Full containerization ensuring the system runs identically across development, staging, and production environments.
+Na raiz do repositório, rode:
 
----
-
-## 🏗️ System Architecture
-
-The ecosystem is composed of strictly isolated, containerized services:
-
-1. **Frontend (`Next.js`):** A reactive dashboard providing real-time visual feedback (prices, red/green variation indicators).
-2. **API (`FastAPI`):** High-performance, asynchronous REST API serving as the entry point for clients. Uses `Pydantic` for strict data validation.
-3. **Database (`PostgreSQL`):** Relational persistence layer accessed via the Repository Pattern (`SQLAlchemy`).
-4. **Message Broker (`Redis`):** In-memory datastore facilitating communication between the API and Workers.
-5. **Worker (`Celery`):** Executes heavy lifting: fetches third-party data, calculates variations, and writes to the DB.
-6. **Scheduler (`Celery Beat`):** The chronometer that triggers automated updates (e.g., every 30 seconds).
-
----
-
-## 🚀 Quick Start Guide
-
-EcoFin is fully containerized. You do not need to install Python, Node.js, or PostgreSQL on your local machine.
-
-### Prerequisites
-* [Docker](https://docs.docker.com/get-docker/)
-* [Docker Compose](https://docs.docker.com/compose/install/)
-
-### 1. Clone the repository
 ```bash
-git clone [https://github.com/your-username/ecofin.git](https://github.com/your-username/ecofin.git)
-cd ecofin
-2. Spin up the environment
-Use Docker Compose to build and start all 6 microservices simultaneously.
+docker compose up --build
+```
 
-Bash
-docker-compose up --build
-Note: The initial build might take a few minutes as it downloads the base images and installs dependencies.
+Serviços disponíveis:
 
-3. Access the Services
-Once the logs stabilize (look for Uvicorn running on http://0.0.0.0:8000), the services are available at:
+- Dashboard: http://localhost:3000
+- API e documentação interativa: http://localhost:8000/docs
+- PostgreSQL: porta 5432
+- Redis: porta 6379
 
-Frontend Dashboard: http://localhost:3000
+O Celery Beat agenda a consulta dos ativos a cada 15 minutos. Também é possível solicitar uma atualização individual pelo dashboard ou por `POST /stocks/{symbol}/refresh`. A tarefa busca o histórico no Yahoo Finance, atualiza o último preço disponível e grava a variação percentual em relação ao preço anteriormente salvo. A consulta da tarefa fica disponível em `GET /tasks/{task_id}`.
 
-API Interactive Docs (Swagger): http://localhost:8000/docs
+## Cadastrar ativos
 
-🛠️ Usage Example: Adding a new Stock
-Since the database starts empty, you can seed it directly through the interactive API documentation.
+Use o botão **Adicionar ativo** no dashboard ou envie uma requisição para `POST /stocks/`:
 
-Open http://localhost:8000/docs.
-
-Navigate to the POST /stocks/ endpoint and click "Try it out".
-
-Insert a JSON payload with a valid Yahoo Finance ticker (e.g., WEGE3, AAPL, PETR4):
-
-JSON
+```json
 {
-  "symbol": "WEGE3",
-  "name": "WEG S.A.",
-  "sector": "Industrial",
-  "price": 0.0 
+  "symbol": "PETR4.SA",
+  "name": "Petrobras PN",
+  "sector": "Energia",
+  "price": 0
 }
-Click Execute.
+```
 
-Go to the Frontend Dashboard (http://localhost:3000) and click Update.
+O preço inicial pode ser zero quando o ativo ainda não tem uma cotação armazenada. A primeira atualização grava o preço; a variação percentual começa a ser calculada a partir de uma cotação anterior maior que zero.
 
-Watch the Automation: Within 30 seconds, the Celery Beat scheduler will dispatch a task to the Worker. The Worker will fetch the real-time price and calculate the variation. Click Update again on the dashboard to see the live data populate automatically!
+## Componentes
 
-🔮 Future Roadmap (R&D Enhancements)
-Implement WebSockets for true push-based UI updates (eliminating the manual "Update" button).
+- `frontend/`: aplicação Next.js e interface do dashboard.
+- `backend/app/domain/`: entidades, contratos e estratégia de média móvel.
+- `backend/app/application/`: serviços da aplicação.
+- `backend/app/infrastructure/`: API, integração com Yahoo Finance, persistência PostgreSQL e tarefas Celery.
+- `docker-compose.yml`: ambiente local com banco, Redis, API, worker, agendador e dashboard.
 
-Integrate an Adapter Pattern for multiple data providers (e.g., Alpha Vantage, B3 APIs) as fallbacks.
-
-Create a microservice for Time-Series Analysis (e.g., Moving Averages, RSI) using Pandas.
+Para apontar o frontend a outra API, defina `NEXT_PUBLIC_API_URL` antes da compilação, por exemplo `http://localhost:8000`.

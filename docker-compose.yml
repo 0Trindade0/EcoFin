@@ -47,6 +47,18 @@ services:
     depends_on:
       - db
       - redis
+  beat:
+    build: ./backend
+    container_name: ecofin_beat
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/ecofin_db
+      - REDIS_URL=redis://redis:6379/0
+    command: celery -A app.infrastructure.worker.celery_app.celery_app beat --loglevel=info
+    depends_on:
+      - db
+      - redis
   frontend:
     build: ./frontend
     container_name: ecofin_frontend

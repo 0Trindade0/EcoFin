@@ -21,4 +21,10 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="America/Sao_Paulo",
     enable_utc=True,
+    beat_schedule={
+        "refresh-stocks-every-15-minutes": {
+            "task": "refresh_all_stocks_task",
+            "schedule": 900.0,
+        },
+    },
 )

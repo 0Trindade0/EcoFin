@@ -5,6 +5,19 @@ from app.infrastructure.adapters.yfinance_adapter import YahooFinanceAdapter
 # Importa a estratégia
 from app.domain.strategies.indicator_strategy import SimpleMovingAverageStrategy
 
+
+@celery_app.task(name="refresh_all_stocks_task")
+def refresh_all_stocks_task():
+    """Enfileira uma atualização para cada ativo cadastrado."""
+    db = SessionLocal()
+    try:
+        stocks = PostgresStockRepository(db).find_all()
+        for stock in stocks:
+            update_stock_price_task.delay(stock.symbol)
+        return {"queued": len(stocks)}
+    finally:
+        db.close()
+
 @celery_app.task(name="update_stock_price_task")
 def update_stock_price_task(symbol: str):
     print(f"🔄 WORKER: Analisando ativo {symbol}...")
@@ -19,7 +32,7 @@ def update_stock_price_task(symbol: str):
         
         if history_df is None or history_df.empty:
             print(f"❌ WORKER: Sem dados para {symbol}")
-            return
+            return {"updated": False, "reason": "Sem dados de mercado."}
 
         # 2. Pega o preço atual (o último fechamento disponível)
         current_price = round(float(history_df['Close'].iloc[-1]), 2)
@@ -43,11 +56,14 @@ def update_stock_price_task(symbol: str):
                 print("   🚀 SINAL: TENDÊNCIA DE ALTA (Preço acima da média)")
             else:
                 print("   🔻 SINAL: TENDÊNCIA DE BAIXA (Preço abaixo da média)")
+            return {"updated": True, "symbol": symbol, "price": current_price}
                 
         else:
             print(f"⚠️ WORKER: Ativo {symbol} não encontrado no banco.")
+            return {"updated": False, "reason": "Ativo não encontrado."}
             
     except Exception as e:
         print(f"🔥 ERRO NO WORKER: {e}")
+        raise
     finally:
         db.close()
